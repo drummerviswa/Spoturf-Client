@@ -4,21 +4,19 @@ import { Route, Routes, useLocation } from 'react-router-dom';
 import Loader from './common/Loader';
 import PageTitle from './components/PageTitle';
 import SignIn from './pages/Authentication/SignIn';
-import SignUp from './pages/Authentication/SignUp';
-import Calendar from './pages/Calendar';
-import Chart from './pages/Chart';
-import ECommerce from './pages/Dashboard/ECommerce';
-import FormElements from './pages/Form/FormElements';
-import FormLayout from './pages/Form/FormLayout';
+import Calendar from './pages/Booking/Calendar';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
-import Tables from './pages/Tables';
-import Alerts from './pages/UiElements/Alerts';
-import Buttons from './pages/UiElements/Buttons';
 import DefaultLayout from './layout/DefaultLayout';
+import HomePage from './pages/Dashboard/HomePage';
+import BookingDetails from './pages/Booking/DailyDetails';
+import Ratings from './pages/Ratings';
+import Customers from './pages/Tables';
+import Payout from './pages/Payout/Payout';
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
+  const [authed, setAuthed] = useState<boolean>(false);
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -27,11 +25,12 @@ function App() {
 
   useEffect(() => {
     setTimeout(() => setLoading(false), 1000);
+    setTimeout(()=>setAuthed(true),1000)
   }, []);
 
   return loading ? (
     <Loader />
-  ) : (
+  ) : authed ? (
     <DefaultLayout>
       <Routes>
         <Route
@@ -39,16 +38,25 @@ function App() {
           element={
             <>
               <PageTitle title="eCommerce Dashboard | TailAdmin - Tailwind CSS Admin Dashboard Template" />
-              <ECommerce />
+              <HomePage />
             </>
           }
         />
         <Route
-          path="/calendar"
+          path="/booking"
           element={
             <>
               <PageTitle title="Calendar | TailAdmin - Tailwind CSS Admin Dashboard Template" />
               <Calendar />
+            </>
+          }
+        />
+        <Route
+          path="/booking/:date"
+          element={
+            <>
+              <PageTitle title="Daily | TailAdmin - Tailwind CSS Admin Dashboard Template" />
+              <BookingDetails />
             </>
           }
         />
@@ -62,29 +70,11 @@ function App() {
           }
         />
         <Route
-          path="/forms/form-elements"
-          element={
-            <>
-              <PageTitle title="Form Elements | TailAdmin - Tailwind CSS Admin Dashboard Template" />
-              <FormElements />
-            </>
-          }
-        />
-        <Route
-          path="/forms/form-layout"
-          element={
-            <>
-              <PageTitle title="Form Layout | TailAdmin - Tailwind CSS Admin Dashboard Template" />
-              <FormLayout />
-            </>
-          }
-        />
-        <Route
-          path="/tables"
+          path="/customers"
           element={
             <>
               <PageTitle title="Tables | TailAdmin - Tailwind CSS Admin Dashboard Template" />
-              <Tables />
+              <Customers />
             </>
           }
         />
@@ -98,52 +88,37 @@ function App() {
           }
         />
         <Route
-          path="/chart"
+          path="/ratings"
           element={
             <>
-              <PageTitle title="Basic Chart | TailAdmin - Tailwind CSS Admin Dashboard Template" />
-              <Chart />
+              <PageTitle title="Settings | TailAdmin - Tailwind CSS Admin Dashboard Template" />
+              <Ratings />
             </>
           }
         />
         <Route
-          path="/ui/alerts"
+          path="/payout"
           element={
             <>
-              <PageTitle title="Alerts | TailAdmin - Tailwind CSS Admin Dashboard Template" />
-              <Alerts />
-            </>
-          }
-        />
-        <Route
-          path="/ui/buttons"
-          element={
-            <>
-              <PageTitle title="Buttons | TailAdmin - Tailwind CSS Admin Dashboard Template" />
-              <Buttons />
-            </>
-          }
-        />
-        <Route
-          path="/auth/signin"
-          element={
-            <>
-              <PageTitle title="Signin | TailAdmin - Tailwind CSS Admin Dashboard Template" />
-              <SignIn />
-            </>
-          }
-        />
-        <Route
-          path="/auth/signup"
-          element={
-            <>
-              <PageTitle title="Signup | TailAdmin - Tailwind CSS Admin Dashboard Template" />
-              <SignUp />
+              <PageTitle title="Payout | TailAdmin - Tailwind CSS Admin Dashboard Template" />
+              <Payout />
             </>
           }
         />
       </Routes>
     </DefaultLayout>
+  ) : (
+    <Routes>
+      <Route
+        path="/auth/signin"
+        element={
+          <>
+            <PageTitle title="Signin | TailAdmin - Tailwind CSS Admin Dashboard Template" />
+            <SignIn />
+          </>
+        }
+      />
+    </Routes>
   );
 }
 

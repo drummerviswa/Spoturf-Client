@@ -1,10 +1,23 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useContext, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import ClickOutside from '../ClickOutside';
 import UserOne from '../../images/user/user-01.png';
+import { AuthContext } from '../../context/AuthContext';
 
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const { currentUser, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const handleLogout = async (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    try {
+      await logout(currentUser);
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error(err.response.data);
+    }
+  };
 
   return (
     <ClickOutside onClick={() => setDropdownOpen(false)} className="relative">
@@ -15,9 +28,9 @@ const DropdownUser = () => {
       >
         <span className="hidden text-right lg:block">
           <span className="block text-sm font-medium text-black dark:text-white">
-            Vaibav R
+            {currentUser.username}
           </span>
-          <span className="block text-xs">VV Turfs</span>
+          <span className="block text-xs">{currentUser.turfName}</span>
         </span>
 
         <span className="h-12 w-12 rounded-full">
@@ -99,7 +112,7 @@ const DropdownUser = () => {
             </li>
           </ul>
           <button
-            onClick={() => console.log(0)}
+            onClick={handleLogout}
             className="flex items-center gap-3.5 px-6 py-4 text-sm font-medium duration-300 ease-in-out hover:text-primary lg:text-base"
           >
             <svg

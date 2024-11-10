@@ -1,170 +1,114 @@
-import { useState, ChangeEvent, FormEvent } from 'react';
+import { useState, ChangeEvent, useEffect, useContext } from 'react';
 import Breadcrumb from '../components/Breadcrumbs/Breadcrumb';
-import axios from 'axios';
-
-interface GamesAvailable {
-  football: boolean;
-  cricket: boolean;
-  shuttle: boolean;
-  basketball: boolean;
-}
-
-interface Amenities {
-  parking: boolean;
-  restroom: boolean;
-  changingRoom: boolean;
-  refreshments: boolean;
-}
+import Slots from '../components/Slots';
+import makeRequest from '../axios';
+import { AuthContext } from '../context/AuthContext';
+import defaultImage from '../images/default.png';
 
 const Profile: React.FC = () => {
-  const [formData, setFormData] = useState({
-    turfName: 'VV Turf',
-    address: '1244, 1245 TNHB, Avadi, Chennai - 600054',
-    price: 400,
-    maps: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d331.9775978208067!2d80.2082200593181!3d13.003414123491835!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a52674259581a7f%3A0x18158de4f3854c54!2sAshok%20Manor%202%2C%20Margosa%20St%2C%20Ramapuram%2C%20Alandur%2C%20Chennai%2C%20Tamil%20Nadu%20600016!5e1!3m2!1sen!2sin!4v1730574316420!5m2!1sen!2sin',
-    startTime: '09:00',
-    endTime: '18:00',
-    gamesAvailable: {
-      football: true,
-      cricket: true,
-      shuttle: true,
-      basketball: true,
-    } as GamesAvailable,
-    amenities: {
-      parking: false,
-      restroom: false,
-      changingRoom: false,
-      refreshments: false,
-    } as Amenities,
-    images: [
-      'https://turftown.in/_next/image?url=https%3A%2F%2Fturftown.s3.ap-south-1.amazonaws.com%2Fsuper_admin%2Ftt-1724318861658.webp&w=640&q=75',
-      'https://turftown.in/_next/image?url=https%3A%2F%2Fturftown.s3.ap-south-1.amazonaws.com%2Fsuper_admin%2Ftt-1709736019379.webp&w=1920&q=75',
-      'https://turftown.in/_next/image?url=https%3A%2F%2Fturftown.s3.ap-south-1.amazonaws.com%2Fsuper_admin%2Ftt-1724324556497.webp&w=1920&q=75',
-    ] as (File | string)[],
+  const { currentUser } = useContext(AuthContext);
+  const [client, setClient] = useState({
+    turfName: '',
+    area: '',
+    address: '',
+    price: '',
+    maps: '',
+    startTime: '',
+    endTime: '',
+    gamesAvailable: [],
+    amenities: [],
+    images: [], // Initialize with empty string for 3 images
   });
 
-  const CLOUDINARY_UPLOAD_URL =
-    'cloudinary://971943342169448:6Wvr8uIB_D-0noQXjHqwgDxXQOo@dg1vtz08u';
-  const UPLOAD_PRESET = 'spoturf-client';
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchClient = async () => {
+      try {
+        const response = await makeRequest.get(`/turfs/${currentUser.TID}`);
+        const complete = response.data;
+        console.log(complete);
+        console.log(response.data);
+
+        setClient(response.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClient();
+  }, [currentUser.TID]);
 
   const handleImageChange = async (
     index: number,
-    e: ChangeEvent<HTMLInputElement>,
+    event: ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('upload_preset', UPLOAD_PRESET);
+      formData.append('image', file);
 
       try {
-        const response = await axios.post(CLOUDINARY_UPLOAD_URL, formData);
-        const imageUrl = response.data.secure_url;
+        const response = await makeRequest.post('/upload', formData);
+        const imageUrl = response.data.imageUrl;
 
-        setFormData((prevData) => {
-          const newImages = [...prevData.images];
-          newImages[index] = imageUrl;
-          return { ...prevData, images: newImages };
+        // Ensure prev.images is an array before using .map()
+        setClient((prev) => {
+          const updatedImages = [...prev.images]; // Make sure to create a copy of the array
+          updatedImages[index] = imageUrl; // Update the image at the correct index
+          return { ...prev, images: updatedImages }; // Set the new images state
         });
       } catch (error) {
-        console.error('Error uploading image:', error);
+        console.error('Image upload failed', error);
       }
     }
   };
 
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
-    if (name in formData) {
-      if (name === 'price') {
-        setFormData((prevData) => ({ ...prevData, [name]: Number(value) }));
-      } else {
-        setFormData((prevData) => ({ ...prevData, [name]: value }));
-      }
-    }
+    setClient((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCheckboxChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-
-    if (formData.gamesAvailable.hasOwnProperty(name)) {
-      setFormData((prevData) => ({
-        ...prevData,
-        gamesAvailable: { ...prevData.gamesAvailable, [name]: checked },
-      }));
-    } else if (formData.amenities.hasOwnProperty(name)) {
-      setFormData((prevData) => ({
-        ...prevData,
-        amenities: { ...prevData.amenities, [name]: checked },
-      }));
-    }
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const {
-      turfName,
-      address,
-      price,
-      maps,
-      startTime,
-      endTime,
-      gamesAvailable,
-      amenities,
-      images,
-    } = formData;
-
-    // Validate form data before submission
-    if (
-      !turfName ||
-      !address ||
-      price <= 0 ||
-      !maps ||
-      !startTime ||
-      !endTime
-    ) {
-      alert('Please fill all required fields correctly.');
-      return;
-    }
-
-    const formToSubmit = new FormData();
-    formToSubmit.append('turfName', turfName);
-    formToSubmit.append('address', address);
-    formToSubmit.append('price', price.toString());
-    formToSubmit.append('maps', maps);
-    formToSubmit.append('startTime', startTime);
-    formToSubmit.append('endTime', endTime);
-    formToSubmit.append('gamesAvailable', JSON.stringify(gamesAvailable));
-    formToSubmit.append('amenities', JSON.stringify(amenities));
-
-    images.forEach((image, index) => {
-      if (typeof image === 'string') {
-        formToSubmit.append(`image${index + 1}`, image); // URL directly added
-      }
-    });
-
-    const API_URL = 'https://mockapi.io/your-mock-endpoint';
-
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        body: formToSubmit,
+      // Ensure that the arrays (gamesAvailable and amenities) are not being double-encoded or altered
+      const response = await makeRequest.put(`/turfs/full/${currentUser.TID}`, {
+        ...client,
+        gamesAvailable: Array.isArray(client.gamesAvailable)
+          ? client.gamesAvailable
+          : JSON.parse(client.gamesAvailable),
+        amenities: Array.isArray(client.amenities)
+          ? client.amenities
+          : JSON.parse(client.amenities),
+        images: client.images,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to save turf data');
-      }
-
-      const result = await response.json();
-      console.log('Turf data saved successfully:', result);
-      alert('Turf data saved successfully');
+      alert('Profile updated successfully');
     } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('There was an error submitting your data. Please try again later.');
+      console.error('Update failed: ', error);
     }
+  };
+
+  const handleGameChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { value, checked } = e.target;
+    setClient((prev) => {
+      const updatedGames = checked
+        ? [...prev.gamesAvailable, value]
+        : prev.gamesAvailable.filter((game) => game !== value);
+      return { ...prev, gamesAvailable: updatedGames };
+    });
+  };
+
+  const handleAmenityChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { value, checked } = e.target;
+    setClient((prev) => {
+      const updatedAmenities = checked
+        ? [...prev.amenities, value]
+        : prev.amenities.filter((amenity) => amenity !== value);
+      return { ...prev, amenities: updatedAmenities };
+    });
   };
 
   return (
@@ -172,13 +116,15 @@ const Profile: React.FC = () => {
       <Breadcrumb pageName="Profile" />
       <div className="overflow-hidden rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {formData.images.map((image, index) => (
-            <div className="relative z-20 h-35 md:h-65" key={index}>
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className="relative z-20 h-35 md:h-65">
               <img
                 src={
-                  typeof image === 'object' ? URL.createObjectURL(image) : image
+                  client?.images?.[index] && client.images[index] !== ''
+                    ? client.images[index]
+                    : defaultImage
                 }
-                alt={`profile cover ${index + 1}`}
+                alt={`Turf Image ${index + 1}`}
                 className="h-full w-full rounded-tl-sm rounded-tr-sm object-cover object-center"
               />
               <div className="absolute bottom-1 right-1 z-10 xsm:bottom-4 xsm:right-4">
@@ -191,7 +137,7 @@ const Profile: React.FC = () => {
                     id={`cover-${index}`}
                     className="sr-only"
                     accept="image/*"
-                    onChange={(e) => handleImageChange(index, e)}
+                    onChange={(e) => handleImageChange(index, e)} // Pass index to handle change
                   />
                   <span>Edit</span>
                 </label>
@@ -199,170 +145,168 @@ const Profile: React.FC = () => {
             </div>
           ))}
         </div>
-        <section className="bg-white dark:bg-gray-900">
-          <div className="max-w-2xl px-4 py-8 mx-auto lg:py-16">
-            <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
+          <section className="bg-white dark:bg-gray-900">
+            <div className="max-w-2xl px-4 py-8 mx-auto lg:py-16">
               <div className="grid gap-4 mb-4 sm:grid-cols-2 sm:gap-6 sm:mb-5">
                 <div className="sm:col-span-2">
                   <label
                     htmlFor="turfName"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300"
                   >
                     Turf Name
                   </label>
                   <input
                     type="text"
-                    name="turfName"
                     id="turfName"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    value={formData.turfName}
+                    name="turfName"
+                    value={client.turfName}
                     onChange={handleChange}
-                    placeholder="Type turf name"
                     required
+                    className="block w-full px-4 py-2 text-sm border rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                   />
                 </div>
-                <div className="w-full col-span-2">
+                <div className="sm:col-span-2">
                   <label
                     htmlFor="address"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300"
                   >
                     Address
                   </label>
                   <input
                     type="text"
-                    name="address"
                     id="address"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    value={formData.address}
+                    name="address"
+                    value={client.address}
                     onChange={handleChange}
-                    placeholder="Type turf address"
                     required
+                    className="block w-full px-4 py-2 text-sm border rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <label
                     htmlFor="price"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300"
                   >
-                    Price
+                    Price per Hour
                   </label>
                   <input
                     type="number"
-                    name="price"
                     id="price"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    value={formData.price}
+                    name="price"
+                    value={client.price}
                     onChange={handleChange}
-                    placeholder="Price"
                     required
+                    onWheel={(e) => e.target.blur()}
+                    className="block w-full px-4 py-2 text-sm border rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <label
-                    htmlFor="category"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    htmlFor="maps"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300"
                   >
-                    Category
+                    Maps Link
                   </label>
                   <input
-                    type="text"
-                    name="category"
-                    id="category"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    value={formData.maps}
+                    type="url"
+                    id="maps"
+                    name="maps"
+                    value={client.maps}
                     onChange={handleChange}
-                    placeholder="Type turf category"
-                    required
+                    className="block w-full px-4 py-2 text-sm border rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <label
                     htmlFor="startTime"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300"
                   >
                     Start Time
                   </label>
                   <input
                     type="time"
-                    name="startTime"
                     id="startTime"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    value={formData.startTime}
+                    name="startTime"
+                    value={client.startTime}
                     onChange={handleChange}
                     required
+                    className="block w-full px-4 py-2 text-sm border rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                   />
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <label
                     htmlFor="endTime"
-                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-300"
                   >
                     End Time
                   </label>
                   <input
                     type="time"
-                    name="endTime"
                     id="endTime"
-                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-                    value={formData.endTime}
+                    name="endTime"
+                    value={client.endTime}
                     onChange={handleChange}
                     required
+                    className="block w-full px-4 py-2 text-sm border rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                   />
                 </div>
               </div>
-              <h2 className="mb-4 text-lg font-semibold">Games Available</h2>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {Object.entries(formData.gamesAvailable).map(
-                  ([game, available]) => (
-                    <div key={game} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name={game}
-                        checked={available}
-                        onChange={handleCheckboxChange}
-                        className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                      />
-                      <label
-                        htmlFor={game}
-                        className="ml-2 text-sm text-gray-900 dark:text-white capitalize"
-                      >
-                        {game}
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-300">
+                  Games Available
+                </h2>
+                <div className="flex flex-wrap gap-4">
+                  {['Football', 'Basketball', 'Cricket', 'Shuttle'].map(
+                    (game) => (
+                      <label key={game} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          value={game}
+                          checked={client.gamesAvailable.includes(game)}
+                          onChange={handleGameChange}
+                        />
+                        <span>{game}</span>
                       </label>
-                    </div>
-                  ),
-                )}
+                    ),
+                  )}
+                </div>
               </div>
-              <h2 className="mb-4 text-lg font-semibold">Amenities</h2>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {Object.entries(formData.amenities).map(
-                  ([amenity, available]) => (
-                    <div key={amenity} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name={amenity}
-                        checked={available}
-                        onChange={handleCheckboxChange}
-                        className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                      />
+
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-300">
+                  Amenities
+                </h2>
+                <div className="flex flex-wrap gap-4">
+                  {['Parking', 'Wifi', 'Changing Room', 'Shower', 'Toilet'].map(
+                    (amenity) => (
                       <label
-                        htmlFor={amenity}
-                        className="ml-2 text-sm text-gray-900 dark:text-white capitalize"
+                        key={amenity}
+                        className="flex items-center space-x-2"
                       >
-                        {amenity}
+                        <input
+                          type="checkbox"
+                          value={amenity}
+                          checked={client.amenities.includes(amenity)}
+                          onChange={handleAmenityChange}
+                        />
+                        <span>{amenity}</span>
                       </label>
-                    </div>
-                  ),
-                )}
+                    ),
+                  )}
+                </div>
               </div>
+
+              <Slots />
               <button
                 type="submit"
-                className="mt-4 inline-flex items-center justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-opacity-90 focus:outline-none"
+                className="mt-4 w-full px-4 py-2 text-white bg-primary rounded-lg hover:bg-primary/70"
               >
-                Save
+                Save Profile
               </button>
-            </form>
-          </div>
-        </section>
+            </div>
+          </section>
+        </form>
       </div>
     </>
   );

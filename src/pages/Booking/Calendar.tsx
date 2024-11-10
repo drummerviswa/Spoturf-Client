@@ -1,24 +1,53 @@
-import { useState, useEffect, SetStateAction } from 'react';
+import { useState, useEffect } from 'react';
 import Breadcrumb from '../../components/Breadcrumbs/Breadcrumb';
 import { Link } from 'react-router-dom';
+import makeRequest from '../../axios';
+import { useAuth } from '../../context/AuthContext';
+import moment from 'moment';
 
 const Calendar = () => {
-  const [dates, setDates] = useState([]);
+  const [dates, setDates] = useState<Array<null | number>>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const date = window.location.pathname.split('/')[2];
+
+  const { currentUser } = useAuth();
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const response = await makeRequest.get(
+          `/bookings/bookings/turf/${currentUser.TID}`,
+        );
+        console.log('Bookings response:', response.data); // Debugging response
+        setBookings(response.data);
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+      }
+    };
+
+    fetchBookings();
+  }, [date, currentUser.TID]);
+
+  const today = new Date();
+  const currentDay = today.getDate();
+  const currentMonthIndex = today.getMonth();
+  const currentYearValue = today.getFullYear();
 
   useEffect(() => {
     generateDates(currentMonth, currentYear);
   }, [currentMonth, currentYear]);
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
   const generateDates = (month: number, year: number) => {
     const startOfMonth = new Date(year, month, 1);
     const endOfMonth = new Date(year, month + 1, 0);
     const daysInMonth = endOfMonth.getDate();
     const startDay = startOfMonth.getDay();
 
-    const datesArray: Array<null|number> = [];
+    const datesArray: Array<null | number> = [];
     for (let i = 0; i < startDay; i++) {
       datesArray.push(null);
     }
@@ -48,6 +77,18 @@ const Calendar = () => {
   for (let i = 0; i < dates.length; i += 7) {
     rows.push(dates.slice(i, i + 7));
   }
+
+  // Updated function to ensure proper date comparison
+  const getBookingCountForDate = (date: string, status: string) => {
+    console.log('Checking bookings for date:', date, 'and status:', status); // Debugging
+    const filteredBookings = bookings.filter((booking) => {
+      const formattedBookingDate = moment(booking.date).format('DD-MM-YYYY');
+      console.log('Booking date:', formattedBookingDate, 'Status:', booking.status); // Debugging
+      return moment(booking.date).isSame(moment(date, 'DD-MM-YYYY'), 'day') && booking.status === status;
+    });
+    console.log(`Filtered bookings for ${status}:`, filteredBookings); // Debugging
+    return filteredBookings.length;
+  };
 
   return (
     <>
@@ -89,30 +130,54 @@ const Calendar = () => {
           <tbody>
             {rows.map((row, rowIndex) => (
               <tr key={rowIndex} className="grid grid-cols-7">
-                {row.map((date, index) => (
-                  <td
-                    key={index}
-                    className="border border-stroke dark:border-strokedark h-20 md:h-25 xl:h-31"
-                  >
-                    {date ? (
-                      <Link
-                        to={`/booking/${date}-${
-                          currentMonth + 1
-                        }-${currentYear}`}
-                        className="flex items-center justify-center h-full w-full transition duration-500 hover:bg-gray dark:hover:bg-meta-4"
-                      >
-                        <span className="font-medium text-black dark:text-white">
-                          {date}
-                          <h2 className="text-xl font-semibold text-green-400">
-                            {date === 2 ? 11 : null}
-                          </h2>
-                        </span>
-                      </Link>
-                    ) : (
-                      <div className="h-full w-full" />
-                    )}
-                  </td>
-                ))}
+                {row.map((date, index) => {
+                  const formattedDate = date
+                    ? `${date}-${currentMonth + 1}-${currentYear}`
+                    : '';
+                  const isToday =
+                    date === currentDay &&
+                    currentMonth === currentMonthIndex &&
+                    currentYearValue === currentYear;
+
+                  const pendingCount = getBookingCountForDate(formattedDate, 'Pending');
+                  const confirmedCount = getBookingCountForDate(formattedDate, 'Confirmed');
+                  const cancelledCount = getBookingCountForDate(formattedDate, 'Cancelled');
+
+                  return (
+                    <td
+                      key={index}
+                      className={`border border-stroke dark:border-strokedark h-20 md:h-25 xl:h-31 ${
+                        isToday ? 'bg-primary' : ''
+                      }`}
+                    >
+                      {date ? (
+                        <Link
+                          to={`/booking/${currentYear}-${
+                            currentMonth + 1
+                          }-${date}`}
+                          className="flex items-center justify-center h-full w-full transition duration-500 hover:bg-gray dark:hover:bg-meta-4"
+                        >
+                          <span className="font-medium text-black dark:text-white">
+                            {date}
+                            <div>
+                              <span className="text-xl px-2 font-semibold text-yellow-400">
+                                {pendingCount}
+                              </span>
+                              <span className="text-xl px-2 font-semibold text-green-400">
+                                {confirmedCount}
+                              </span>
+                              <span className="text-xl px-2 font-semibold text-red-400">
+                                {cancelledCount}
+                              </span>
+                            </div>
+                          </span>
+                        </Link>
+                      ) : (
+                        <div className="h-full w-full" />
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

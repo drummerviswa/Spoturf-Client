@@ -1,16 +1,48 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import CardDataStats from '../../components/CardDataStats';
 import ChartOne from '../../components/Charts/ChartOne';
-import ChartTwo from '../../components/Charts/ChartTwo';
+import makeRequest from '../../axios';
+import { useAuth } from '../../context/AuthContext';
 
 const HomePage: React.FC = () => {
+  const [bookings, setBookings] = useState(0);
+  const [payout, setPayout] = useState(0);
+  const [customers, setCustomers] = useState(0);
+  const { currentUser } = useAuth();
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const response = await makeRequest.get(
+          `/bookings/bookings/turf/${currentUser.TID}`,
+        );
+        setBookings(response.data);
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+      }
+    };
+    const fetchCustomers = async () => {
+      try {
+        const response = await makeRequest.get(
+          `/customers/turf/${currentUser.TID}`,
+        );
+        setCustomers(response.data);
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+      }
+    };
+
+    fetchBookings();
+    fetchCustomers();
+  }, []);
+  console.log(bookings);
+
   return (
-    <>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3 2xl:gap-7.5">
+    <div className="no-scrollbar">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3 2xl:gap-7.5 no-scrollbar">
         <CardDataStats
-        page='/booking'
+          page="/booking"
           title="Total Bookings"
-          total={'4000'}
+          total={`${bookings.length}`}
           rate="0.43%"
           levelUp
         >
@@ -32,9 +64,9 @@ const HomePage: React.FC = () => {
           </svg>
         </CardDataStats>
         <CardDataStats
-        page='/payout'
+          page="/payout"
           title="Total Payout"
-          total={`₹${4000}/-`}
+          total={`₹${0}/-`}
           rate="4.35%"
           levelUp
         >
@@ -58,8 +90,8 @@ const HomePage: React.FC = () => {
         </CardDataStats>
         <CardDataStats
           title="Total Customers"
-          page='/customers'
-          total={'277'}
+          page="/customers"
+          total={`${customers.length}`}
           rate="0.95%"
           levelDown
         >
@@ -87,10 +119,10 @@ const HomePage: React.FC = () => {
         </CardDataStats>
       </div>
 
-      <div className="grid grid-cols-12 gap-4 mt-6 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
+      <div className="grid grid-cols-12 gap-4 mt-6 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5 no-scrollbar">
         <ChartOne />
       </div>
-    </>
+    </div>
   );
 };
 

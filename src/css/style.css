@@ -31,6 +31,9 @@
 }
 
 /* third-party libraries CSS */
+.today {
+  background-color: #259AE6;
+}
 
 .tableCheckbox:checked ~ div span {
   @apply opacity-100;

@@ -42,7 +42,7 @@ const HomePage: React.FC = () => {
         <CardDataStats
           page="/booking"
           title="Total Bookings"
-          total={`${bookings.length}`}
+          total={`${bookings.length||0}`}
           rate="0.43%"
           levelUp
         >
@@ -91,7 +91,7 @@ const HomePage: React.FC = () => {
         <CardDataStats
           title="Total Customers"
           page="/customers"
-          total={`${customers.length}`}
+          total={`${customers.length||0}`}
           rate="0.95%"
           levelDown
         >

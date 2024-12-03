@@ -23,7 +23,7 @@ const FileUpload = () => {
     formData.append('image', selectedFile);
 
     try {
-      const response = await axios.post('http://localhost:8800/upload', formData, {
+      const response = await axios.post('https://spoturf-backend.onrender.com/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

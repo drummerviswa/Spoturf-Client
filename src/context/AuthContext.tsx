@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (inputs: any) => {
     try {
       const res = await axios.post(
-        'http://localhost:8800/client/auth/login',
+        'https://spoturf-backend.onrender.com/client/auth/login',
         inputs,
         {
           withCredentials: true,
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await axios.post('http://localhost:8800/client/auth/logout', {});
+      await axios.post('https://spoturf-backend.onrender.com/client/auth/logout', {});
       setCurrentUser(null);
       localStorage.removeItem('user');
     } catch (err) {
